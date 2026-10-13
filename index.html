@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#07111f">
+<title>بندر نئون | Neon Harbor</title>
+<style>
+:root{--bg:#07111f;--panel:rgba(11,25,43,.88);--line:rgba(127,201,255,.22);--cyan:#4de6ff;--gold:#ffca66;--muted:#a9bed1}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#eef8ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,sans-serif;touch-action:none}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hud{position:fixed;inset:0;pointer-events:none;padding:14px;display:flex;flex-direction:column;justify-content:space-between}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.brand,.stats,.mission,.bottomPanel{background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);box-shadow:0 12px 36px #0005;border-radius:16px}
+.brand{padding:10px 14px}.brand b{display:block;letter-spacing:.4px;font-size:16px}.brand small{color:var(--muted);font-size:10px;letter-spacing:2px;direction:ltr;display:block;margin-top:3px}
+.stats{display:flex;gap:14px;padding:10px 12px}.stat small{display:block;color:var(--muted);font-size:10px}.stat strong{font-size:17px;color:var(--cyan);font-variant-numeric:tabular-nums}
+.mission{align-self:flex-start;padding:10px 13px;max-width:270px;margin-top:10px}.mission strong{color:var(--gold);font-size:12px}.mission p{margin:4px 0 0;font-size:12px;line-height:1.6;color:#d8e8f5}
+.bottom{display:flex;justify-content:space-between;align-items:end;gap:10px}.bottomPanel{padding:10px 12px;font-size:11px;color:var(--muted);line-height:1.6;max-width:250px}
+.controls{display:flex;gap:9px;pointer-events:auto;direction:ltr}.ctrl{width:58px;height:58px;border-radius:18px;border:1px solid #82eaff66;background:linear-gradient(145deg,#16314aee,#071727ee);color:#e8fbff;font-size:22px;box-shadow:0 7px 0 #020913,0 0 22px #30c9ff16;touch-action:none}.ctrl:active,.ctrl.active{transform:translateY(3px);box-shadow:0 3px 0 #020913;background:#174d68}.ctrl.action{width:72px;color:#081523;background:linear-gradient(145deg,#ffe3a1,#ffb947);border-color:#ffe7b0;font-size:12px;font-weight:800}
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#030915b8,#061a2dd9);backdrop-filter:blur(8px);z-index:5}
+.card{width:min(440px,100%);padding:25px;border-radius:24px;border:1px solid #77dcff44;background:linear-gradient(145deg,#10243aef,#071321f5);box-shadow:0 30px 100px #0008}
+.kicker{font-size:11px;letter-spacing:3px;color:var(--cyan);direction:ltr;text-align:right}.card h1{font-size:32px;margin:10px 0 5px}.card h1 span{color:var(--cyan)}.card p{color:#c2d4e4;font-size:14px;line-height:1.9}.pillrow{display:flex;gap:8px;flex-wrap:wrap;margin:17px 0}.pill{border:1px solid var(--line);border-radius:99px;padding:6px 10px;color:#c5e8f6;font-size:11px}.start{width:100%;border:0;border-radius:14px;padding:15px;background:linear-gradient(90deg,#49e5ff,#94f5df);color:#041321;font-weight:900;font-size:16px}
+#toast{position:fixed;top:42%;left:50%;transform:translate(-50%,-50%);padding:12px 18px;background:#092034ed;border:1px solid #52e6ff66;border-radius:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:4;text-align:center;font-weight:700}
+@media(min-width:700px){.hud{padding:22px}.brand b{font-size:19px}.ctrl{width:64px;height:64px}.mission{max-width:310px}.bottomPanel{font-size:12px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div class="hud">
+ <div>
+  <div class="top">
+   <div class="brand"><b>بندر نئون</b><small>NEON HARBOR / SHIFT 01</small></div>
+   <div class="stats">
+    <div class="stat"><small>امتیاز</small><strong id="score">0000</strong></div>
+    <div class="stat"><small>زمان</small><strong id="time">60</strong></div>
+    <div class="stat"><small>بار</small><strong id="cargo">0/5</strong></div>
+   </div>
+  </div>
+  <div class="mission"><strong>مأموریت شیفت</strong><p id="missionText">کانتینرها را از اسکله بردار و روی سکوی نورانی قرار بده. دقت بیشتر = امتیاز بیشتر.</p></div>
+ </div>
+ <div class="bottom">
+  <div class="bottomPanel">حرکت جرثقیل: ◀ ▶<br>بالا/پایین: تنظیم ارتفاع بار<br>دکمه طلایی: گرفتن یا رها کردن بار</div>
+  <div class="controls">
+   <button class="ctrl" data-key="left" aria-label="چپ">◀</button>
+   <button class="ctrl" data-key="right" aria-label="راست">▶</button>
+   <button class="ctrl" data-key="up" aria-label="بالا">▲</button>
+   <button class="ctrl" data-key="down" aria-label="پایین">▼</button>
+   <button class="ctrl action" id="grab">گرفتن<br> / رها</button>
+  </div>
+ </div>
+</div>
+<div id="toast"></div>
+<div class="overlay" id="intro">
+ <div class="card">
+  <div class="kicker">A MINI WEB GAME</div>
+  <h1>بندر <span>نئون</span></h1>
+  <p>شیفت شب شروع شده. با جرثقیل مغناطیسی، کانتینرهای رنگی را از محوطه جمع کن و دقیقاً روی سکوی بارگیری بگذار. هر بار موفق، مرحله را سخت‌تر و امتیازت را بیشتر می‌کند.</p>
+  <div class="pillrow"><span class="pill">کنترل لمسی</span><span class="pill">گرافیک نئونی</span><span class="pill">۶۰ ثانیه</span><span class="pill">رکوردگیری</span></div>
+  <button class="start" id="start">شروع شیفت ←</button>
+ </div>
+</div>
+<div class="overlay" id="end" style="display:none">
+ <div class="card">
+  <div class="kicker">SHIFT COMPLETE</div><h1 id="endTitle">شیفت تمام شد</h1>
+  <p id="endText">نتیجه‌ی شیفت تو آماده است.</p>
+  <div class="pillrow"><span class="pill" id="finalScore">امتیاز: 0</span><span class="pill" id="best">رکورد: 0</span></div>
+  <button class="start" id="restart">شروع دوباره ←</button>
+ </div>
+</div>
+<div id="toast"></div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+let W=0,H=0,dpr=1,playing=false,last=0,elapsed=0,score=0,delivered=0,level=1,carried=null,toastTimer=0;
+const keys={left:false,right:false,up:false,down:false};
+let crane={x:.27,y:.32},containers=[],particles=[],stars=[],target={x:.75,y:.66};
+const $=id=>document.getElementById(id);
+const rand=(a,b)=>a+Math.random()*(b-a);
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);stars=Array.from({length:100},()=>({x:Math.random()*W,y:Math.random()*H*.55,r:Math.random()*1.5+.3,a:Math.random()*.6+.15}));}
+addEventListener('resize',resize);resize();
+function spawn(){containers=[];for(let i=0;i<Math.min(5,3+Math.floor(level/2));i++)containers.push({x:.12+i*.105,y:.72-(i%2)*.04,w:.075,h:.055,c:['#ff745e','#40d9ef','#ffc45d','#a68aff','#5be0a1'][i%5],id:i,delivered:false});}
+spawn();
+function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.opacity=0,1100)}
+function roundRect(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.stroke()}}
+function poly(points,fill,stroke){ctx.beginPath();ctx.moveTo(points[0][0],points[0][1]);points.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.stroke()}}
+function draw(){
+ const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#06101f');sky.addColorStop(.58,'#12304a');sky.addColorStop(1,'#071522');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ stars.forEach(s=>{ctx.globalAlpha=s.a;ctx.fillStyle='#bdefff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()});ctx.globalAlpha=1;
+ // distant skyline
+ for(let i=0;i<18;i++){let x=i*W/17,bh=H*(.08+((i*37)%7)/100);ctx.fillStyle=i%3?'#0a2033':'#102941';ctx.fillRect(x,H*.47-bh,W/20,bh);for(let j=0;j<4;j++){ctx.fillStyle=(i+j)%4===0?'#ffcb6b55':'#48dfff30';ctx.fillRect(x+5+j*6,H*.48-bh+8,3,5)}}
+ // water and dock
+ poly([[0,H*.57],[W,H*.51],[W,H],[0,H]],'#092238');
+ for(let i=0;i<15;i++){let y=H*.62+i*H*.028;ctx.strokeStyle=`rgba(66,198,226,${.05+i*.004})`;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,y+Math.sin(i)*5);ctx.lineTo(W,y+Math.cos(i)*8);ctx.stroke()}
+ poly([[0,H*.53],[W*.62,H*.48],[W,H*.58],[W*.4,H*.68]],'#1c3b50','#3f7285');
+ // target platform
+ const tx=target.x*W,ty=target.y*H;
+ ctx.save();ctx.shadowBlur=24;ctx.shadowColor='#48f4ff';poly([[tx,ty],[tx+W*.14,ty-H*.03],[tx+W*.2,ty+H*.01],[tx+W*.06,ty+H*.045]],'#123d51','#57edff');ctx.restore();
+ ctx.fillStyle='#57edff';ctx.font=`bold ${Math.max(10,W*.012)}px sans-serif`;ctx.fillText('بارگیری',tx+W*.07,ty+H*.02);
+ // gantry crane legs and top beam
+ const cx=crane.x*W,cy=crane.y*H;
+ ctx.save();ctx.shadowBlur=12;ctx.shadowColor='#ffb84d';ctx.strokeStyle='#eaa84f';ctx.lineWidth=Math.max(5,W*.009);
+ ctx.beginPath();ctx.moveTo(W*.18,H*.08);ctx.lineTo(W*.18,H*.66);ctx.moveTo(W*.18,H*.1);ctx.lineTo(W*.58,H*.1);ctx.moveTo(W*.58,H*.1);ctx.lineTo(W*.58,H*.61);ctx.stroke();
+ ctx.strokeStyle='#ffe0a0';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,H*.1);ctx.lineTo(cx,cy+H*.03);ctx.stroke();
+ roundRect(cx-W*.018,cy+H*.015,W*.036,H*.035,5,'#ffc45d','#fff0b0');
+ ctx.restore();
+ // containers on dock
+ containers.forEach(c=>{if(c.delivered)return;let x=c.x*W,y=c.y*H,w=c.w*W,h=c.h*H;drawContainer(x,y,w,h,c.c)});
+ if(carried){let w=carried.w*W,h=carried.h*H;drawContainer(cx-w/2,cy+H*.055,w,h,carried.c);ctx.strokeStyle='#ffe2a4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,cy+H*.05);ctx.lineTo(cx,cy+H*.055);ctx.stroke()}
+ // target guidance beam
+ ctx.setLineDash([5,7]);ctx.strokeStyle='rgba(78,235,255,.35)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(tx+W*.1,ty);ctx.lineTo(tx+W*.1,H*.84);ctx.stroke();ctx.setLineDash([]);
+ // foreground deck
+ poly([[0,H*.84],[W,H*.76],[W,H],[0,H]],'#0b1a29');
+ for(let i=0;i<14;i++){ctx.strokeStyle='#244459';ctx.beginPath();ctx.moveTo(i*W/13,H*.84);ctx.lineTo(i*W/13,H);ctx.stroke()}
+ ctx.strokeStyle='#ffca6655';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,H*.86);ctx.lineTo(W,H*.78);ctx.stroke();
+ particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()});ctx.globalAlpha=1;
+ if(playing){const t=Math.max(0,60-elapsed);$('time').textContent=Math.ceil(t);$('score').textContent=String(score).padStart(4,'0');$('cargo').textContent=delivered+'/'+(5+Math.floor((level-1)/2));}
+}
+function drawContainer(x,y,w,h,c){ctx.save();ctx.shadowBlur=10;ctx.shadowColor=c;poly([[x,y],[x+w,y-h*.16],[x+w,y+h*.84],[x,y+h]],c);ctx.shadowBlur=0;ctx.strokeStyle='#ffffff66';ctx.lineWidth=1.5;ctx.strokeRect(x+3,y+3,w-6,h-6);for(let i=1;i<6;i++){ctx.strokeStyle='#09182755';ctx.beginPath();ctx.moveTo(x+w*i/6,y+2);ctx.lineTo(x+w*i/6,y+h-2);ctx.stroke()}poly([[x,y],[x+w,y-h*.16],[x+w+4,y-h*.16+3],[x+4,y+3]],'#ffffff22');ctx.restore()}
+function burst(x,y,color){for(let i=0;i<18;i++)particles.push({x,y,vx:rand(-2.5,2.5),vy:rand(-3,1),life:1,r:rand(1.5,4),color})}
+function action(){if(!playing)return;const cx=crane.x*W,cy=crane.y*H;
+ if(!carried){let nearest=null,dist=Infinity;containers.forEach(c=>{if(c.delivered)return;let dx=Math.abs(c.x*W+c.w*W/2-cx),dy=Math.abs(c.y*H-cy);let d=Math.hypot(dx,dy);if(d<dist){dist=d;nearest=c}});if(nearest&&dist<Math.min(W*.12,H*.18)){carried=nearest;toast('بار گرفته شد');}else toast('به کانتینر نزدیک شو');}
+ else {if(Math.abs(crane.x-target.x-.1)<.13&&Math.abs(crane.y-target.y)<.18){carried.delivered=true;delivered++;let bonus=Math.max(100,250-Math.round(Math.abs(crane.x-target.x-.1)*900));score+=bonus+level*25;burst(W*(target.x+.1),H*target.y,'#55f2ff');toast('بارگیری موفق! +'+(bonus+level*25));carried=null;if(delivered>=5+Math.floor((level-1)/2)){level++;delivered=0;target.x=rand(.65,.78);spawn();toast('مرحله '+level+' شروع شد!')}}else{toast('دقت کن؛ روی سکوی نورانی رها کن');carried=null;}}
+}
+function update(dt){if(!playing)return;elapsed+=dt;if(elapsed>=60){finish();return}
+ let speed=.32*dt*(1+(level-1)*.08);if(keys.left)crane.x-=speed;if(keys.right)crane.x+=speed;if(keys.up)crane.y-=speed*.75;if(keys.down)crane.y+=speed*.75;
+ crane.x=Math.max(.19,Math.min(.58,crane.x));crane.y=Math.max(.2,Math.min(.73,crane.y));
+ particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.04;p.life-=dt*1.4});particles=particles.filter(p=>p.life>0);
+}
+function loop(now){let dt=Math.min(.05,(now-last)/1000||0);last=now;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function start(){playing=true;elapsed=0;score=0;delivered=0;level=1;carried=null;crane={x:.27,y:.32};target={x:.75,y:.66};spawn();$('intro').style.display='none';$('end').style.display='none';$('missionText').textContent='با دکمه طلایی بار را بگیر، جرثقیل را حرکت بده و روی سکوی نورانی رها کن.';toast('شیفت شروع شد!')}
+function finish(){playing=false;const best=Math.max(score,Number(localStorage.getItem('neonHarborBest')||0));localStorage.setItem('neonHarborBest',best);$('endTitle').textContent=score>=best?'عملیات درخشان!':'شیفت تمام شد';$('endText').textContent=`در ۶۰ ثانیه ${delivered} بار را تحویل دادی. برای امتیاز بیشتر، بار را نزدیک مرکز سکوی نورانی رها کن.`;$('finalScore').textContent='امتیاز: '+score;$('best').textContent='رکورد: '+best;$('end').style.display='flex'}
+$('start').addEventListener('click',start);$('restart').addEventListener('click',start);$('grab').addEventListener('pointerdown',e=>{e.preventDefault();action()});
+document.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;const down=e=>{e.preventDefault();keys[k]=true;b.classList.add('active')};const up=e=>{e.preventDefault();keys[k]=false;b.classList.remove('active')};b.addEventListener('pointerdown',down);b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('pointerleave',up)});
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='a')keys.left=true;if(e.key==='ArrowRight'||e.key==='d')keys.right=true;if(e.key==='ArrowUp'||e.key==='w')keys.up=true;if(e.key==='ArrowDown'||e.key==='s')keys.down=true;if(e.key===' '){e.preventDefault();action()}});
+addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='a')keys.left=false;if(e.key==='ArrowRight'||e.key==='d')keys.right=false;if(e.key==='ArrowUp'||e.key==='w')keys.up=false;if(e.key==='ArrowDown'||e.key==='s')keys.down=false});
+})();
+</script>
+</body></html>
